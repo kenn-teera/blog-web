@@ -1,18 +1,57 @@
 package main
 
 import (
-	"fmt"
+	"bytes"
+	"html/template"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/yuin/goldmark"
+	"gopkg.in/yaml.v3"
 )
+
+// Post represents a blog post with metadata
+type Post struct {
+	Slug    string
+	Title   string
+	Date    time.Time
+	DateStr string
+}
+
+// PostFrontmatter represents the YAML frontmatter in posts
+type PostFrontmatter struct {
+	Title string `yaml:"title"`
+	Date  string `yaml:"date"`
+}
+
+// PageData holds data for HTML templates
+type PageData struct {
+	Title   string
+	Content template.HTML
+}
 
 func main() {
 	mux := http.NewServeMux()
 
+	// Serve static files (CSS, JS)
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
+	// Serve images
+	mux.Handle("GET /images/", http.StripPrefix("/images/", http.FileServer(http.Dir("images"))))
+
+	// Homepage - list all posts
+	mux.HandleFunc("GET /", HomeHandler)
+
+	// Individual post
 	mux.HandleFunc("GET /posts/{slug}", PostHandler(&FileReader{}))
 
+	log.Println("🚀 Blog running at http://localhost:3030")
 	err := http.ListenAndServe(":3030", mux)
 	if err != nil {
 		log.Fatal(err)
@@ -26,7 +65,7 @@ type SlugReader interface {
 type FileReader struct{}
 
 func (fr *FileReader) Read(slug string) (string, error) {
-	f, err := os.Open(slug + ".md")
+	f, err := os.Open(filepath.Join("posts", slug+".md"))
 	if err != nil {
 		return "", err
 	}
@@ -38,15 +77,158 @@ func (fr *FileReader) Read(slug string) (string, error) {
 	return string(b), nil
 }
 
+// parseFrontmatter extracts YAML frontmatter from markdown content
+func parseFrontmatter(content string) (PostFrontmatter, string) {
+	var fm PostFrontmatter
+
+	// Check if content starts with ---
+	if !strings.HasPrefix(content, "---") {
+		return fm, content
+	}
+
+	// Find the closing ---
+	parts := strings.SplitN(content[3:], "---", 2)
+	if len(parts) < 2 {
+		return fm, content
+	}
+
+	// Parse YAML
+	yaml.Unmarshal([]byte(parts[0]), &fm)
+
+	// Return the content after frontmatter
+	return fm, strings.TrimSpace(parts[1])
+}
+
+// HomeHandler lists all blog posts
+func HomeHandler(w http.ResponseWriter, r *http.Request) {
+	files, err := os.ReadDir("posts")
+	if err != nil {
+		http.Error(w, "Could not read posts", http.StatusInternalServerError)
+		return
+	}
+
+	var posts []Post
+	for _, f := range files {
+		if strings.HasSuffix(f.Name(), ".md") {
+			slug := strings.TrimSuffix(f.Name(), ".md")
+
+			// Read the post to get frontmatter
+			content, err := os.ReadFile(filepath.Join("posts", f.Name()))
+			if err != nil {
+				continue
+			}
+
+			fm, _ := parseFrontmatter(string(content))
+
+			post := Post{
+				Slug: slug,
+			}
+
+			// Use frontmatter title or generate from slug
+			if fm.Title != "" {
+				post.Title = fm.Title
+			} else {
+				post.Title = strings.Title(strings.ReplaceAll(slug, "-", " "))
+			}
+
+			// Parse date from frontmatter or use file modification time
+			if fm.Date != "" {
+				if t, err := time.Parse("2006-01-02", fm.Date); err == nil {
+					post.Date = t
+					post.DateStr = t.Format("Jan 2, 2006")
+				}
+			}
+			if post.DateStr == "" {
+				info, _ := f.Info()
+				if info != nil {
+					post.Date = info.ModTime()
+					post.DateStr = info.ModTime().Format("Jan 2, 2006")
+				}
+			}
+
+			posts = append(posts, post)
+		}
+	}
+
+	// Sort posts by date (newest first)
+	sort.Slice(posts, func(i, j int) bool {
+		return posts[i].Date.After(posts[j].Date)
+	})
+
+	// Build post list HTML
+	var content bytes.Buffer
+	content.WriteString("<h1>Welcome to My Blog</h1>\n")
+	content.WriteString("<p class=\"about-me\">Hi! I'm a developer who loves building things with Go. This is my personal space to share thoughts, tutorials, and projects.</p>\n")
+	content.WriteString("<h2 class=\"posts-heading\">Posts</h2>\n")
+	content.WriteString("<ul class=\"post-list\">\n")
+	for _, post := range posts {
+		content.WriteString("<li>")
+		content.WriteString("<a href=\"/posts/" + post.Slug + "\">" + post.Title + "</a>")
+		content.WriteString("<span class=\"post-date\">" + post.DateStr + "</span>")
+		content.WriteString("</li>\n")
+	}
+	content.WriteString("</ul>\n")
+
+	renderPage(w, "Home", template.HTML(content.String()))
+}
+
+// PostHandler handles individual blog posts
 func PostHandler(sl SlugReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		slug := r.PathValue("slug")
 		postMarkdown, err := sl.Read(slug)
 		if err != nil {
-			//TODO: Handle different errors in the future
 			http.Error(w, "Post not found", http.StatusNotFound)
 			return
 		}
-		fmt.Fprint(w, postMarkdown)
+
+		// Parse frontmatter and get content
+		fm, markdownContent := parseFrontmatter(postMarkdown)
+
+		// Convert markdown to HTML
+		var buf bytes.Buffer
+		if err := goldmark.Convert([]byte(markdownContent), &buf); err != nil {
+			http.Error(w, "Error rendering post", http.StatusInternalServerError)
+			return
+		}
+
+		// Use frontmatter title or generate from slug
+		title := fm.Title
+		if title == "" {
+			title = strings.Title(strings.ReplaceAll(slug, "-", " "))
+		}
+
+		// Build post HTML with date
+		var postHTML bytes.Buffer
+		postHTML.WriteString("<article>\n")
+		postHTML.WriteString("<div class=\"post-header\">\n")
+		postHTML.WriteString("<h1>" + title + "</h1>\n")
+		if fm.Date != "" {
+			if t, err := time.Parse("2006-01-02", fm.Date); err == nil {
+				postHTML.WriteString("<span class=\"post-meta\">" + t.Format("Jan 2, 2006") + "</span>\n")
+			}
+		}
+		postHTML.WriteString("</div>\n")
+		postHTML.WriteString(buf.String())
+		postHTML.WriteString("</article>")
+
+		renderPage(w, title, template.HTML(postHTML.String()))
 	}
+}
+
+// renderPage renders the base template with content
+func renderPage(w http.ResponseWriter, title string, content template.HTML) {
+	tmpl, err := template.ParseFiles("templates/base.html")
+	if err != nil {
+		http.Error(w, "Template error", http.StatusInternalServerError)
+		return
+	}
+
+	data := PageData{
+		Title:   title,
+		Content: content,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	tmpl.Execute(w, data)
 }

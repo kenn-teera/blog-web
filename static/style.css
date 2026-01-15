@@ -1,0 +1,353 @@
+/* Minimal Blog Styles */
+:root {
+    --bg-color: #fafafa;
+    --text-color: #333;
+    --heading-color: #111;
+    --heading-secondary: #222;
+    --border-color: #eee;
+    --code-bg: #f4f4f4;
+    --link-color: #0066cc;
+    --muted-color: #666;
+    --muted-light: #888;
+}
+
+/* Dark Mode - via data-theme attribute */
+[data-theme="dark"] {
+    --bg-color: #1a1a1a;
+    --text-color: #e0e0e0;
+    --heading-color: #ffffff;
+    --heading-secondary: #f0f0f0;
+    --border-color: #333;
+    --code-bg: #2d2d2d;
+    --link-color: #66b3ff;
+    --muted-color: #aaa;
+    --muted-light: #888;
+}
+
+/* Fallback to system preference if no theme set */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+        --bg-color: #1a1a1a;
+        --text-color: #e0e0e0;
+        --heading-color: #ffffff;
+        --heading-secondary: #f0f0f0;
+        --border-color: #333;
+        --code-bg: #2d2d2d;
+        --link-color: #66b3ff;
+        --muted-color: #aaa;
+        --muted-light: #888;
+    }
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    line-height: 1.6;
+    color: var(--text-color);
+    background-color: var(--bg-color);
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Header */
+header {
+    margin-bottom: 3rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--heading-color);
+    text-decoration: none;
+}
+
+.logo:hover {
+    color: var(--link-color);
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+    background: none;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+}
+
+.theme-toggle:hover {
+    border-color: var(--link-color);
+    transform: scale(1.1);
+}
+
+/* Show/hide icons based on theme */
+.sun-icon {
+    display: none;
+}
+
+.moon-icon {
+    display: inline;
+}
+
+[data-theme="dark"] .sun-icon {
+    display: inline;
+}
+
+[data-theme="dark"] .moon-icon {
+    display: none;
+}
+
+/* Main Content */
+main {
+    min-height: 60vh;
+}
+
+/* Article Styles */
+article h1 {
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+    color: var(--heading-color);
+}
+
+article h2 {
+    font-size: 1.5rem;
+    margin: 2rem 0 1rem;
+    color: var(--heading-secondary);
+}
+
+article h3 {
+    font-size: 1.25rem;
+    margin: 1.5rem 0 0.75rem;
+    color: var(--text-color);
+}
+
+article p {
+    margin-bottom: 1rem;
+}
+
+article ul,
+article ol {
+    margin: 1rem 0;
+    padding-left: 2rem;
+}
+
+article li {
+    margin-bottom: 0.5rem;
+}
+
+article code {
+    background: var(--code-bg);
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+article pre {
+    background: #2d2d2d;
+    color: #f8f8f2;
+    padding: 1rem;
+    border-radius: 5px;
+    overflow-x: auto;
+    margin: 1rem 0;
+}
+
+article pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+}
+
+article blockquote {
+    border-left: 3px solid var(--link-color);
+    padding-left: 1rem;
+    margin: 1rem 0;
+    color: var(--muted-color);
+    font-style: italic;
+}
+
+article a {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+article a:hover {
+    text-decoration: underline;
+}
+
+/* Post List (Homepage) */
+.about-me {
+    font-size: 1.1rem;
+    color: var(--muted-color);
+    margin: 1rem 0 2rem;
+    line-height: 1.7;
+}
+
+.posts-heading {
+    font-size: 1.5rem;
+    color: var(--heading-color);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--link-color);
+}
+
+.post-list {
+    list-style: none;
+    padding: 0;
+}
+
+.post-list li {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.post-list li:last-child {
+    border-bottom: none;
+}
+
+.post-list a {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--heading-color);
+    text-decoration: none;
+}
+
+.post-list a:hover {
+    color: var(--link-color);
+}
+
+.post-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.post-date {
+    font-size: 0.85rem;
+    color: var(--muted-light);
+    white-space: nowrap;
+    margin-left: 1rem;
+}
+
+/* Post Header (title + date inline) */
+.post-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.post-header h1 {
+    font-size: 2rem;
+    color: var(--heading-color);
+    margin: 0;
+}
+
+/* Post Meta (date on individual posts) */
+.post-meta {
+    font-size: 0.9rem;
+    color: var(--muted-color);
+    white-space: nowrap;
+}
+
+/* Images in posts */
+article img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 1.5rem 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] article img {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Footer */
+footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+    color: var(--muted-light);
+    font-size: 0.875rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    body {
+        padding: 1.5rem 1rem;
+    }
+
+    header {
+        margin-bottom: 2rem;
+    }
+
+    .logo {
+        font-size: 1.25rem;
+    }
+
+    article h1 {
+        font-size: 1.75rem;
+    }
+
+    article h2 {
+        font-size: 1.35rem;
+    }
+
+    article h3 {
+        font-size: 1.1rem;
+    }
+
+    .post-list a {
+        font-size: 1.1rem;
+    }
+
+    article pre {
+        padding: 0.75rem;
+        font-size: 0.85em;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 1rem 0.75rem;
+    }
+
+    article h1 {
+        font-size: 1.5rem;
+    }
+
+    article ul,
+    article ol {
+        padding-left: 1.5rem;
+    }
+
+    article blockquote {
+        padding-left: 0.75rem;
+    }
+}
