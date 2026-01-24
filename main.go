@@ -101,6 +101,26 @@ func parseFrontmatter(content string) (PostFrontmatter, string) {
 
 // HomeHandler lists all blog posts
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
+	// Get language from query param or cookie, default to "th"
+	lang := r.URL.Query().Get("lang")
+	if lang == "" {
+		if cookie, err := r.Cookie("lang"); err == nil {
+			lang = cookie.Value
+		}
+	}
+	if lang != "en" && lang != "th" {
+		lang = "th"
+	}
+
+	// Set language cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "lang",
+		Value:    lang,
+		Path:     "/",
+		MaxAge:   31536000, // 1 year
+		HttpOnly: false,
+	})
+
 	files, err := os.ReadDir("posts")
 	if err != nil {
 		http.Error(w, "Could not read posts", http.StatusInternalServerError)
@@ -111,6 +131,16 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), ".md") {
 			slug := strings.TrimSuffix(f.Name(), ".md")
+
+			// Filter by language prefix (th- or en-)
+			// Posts without prefix are shown in all languages
+			hasLangPrefix := strings.HasPrefix(slug, "th-") || strings.HasPrefix(slug, "en-")
+			if hasLangPrefix {
+				expectedPrefix := lang + "-"
+				if !strings.HasPrefix(slug, expectedPrefix) {
+					continue // Skip posts for other languages
+				}
+			}
 
 			// Read the post to get frontmatter
 			content, err := os.ReadFile(filepath.Join("posts", f.Name()))
@@ -128,7 +158,12 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 			if fm.Title != "" {
 				post.Title = fm.Title
 			} else {
-				post.Title = strings.Title(strings.ReplaceAll(slug, "-", " "))
+				// Remove language prefix for display
+				displaySlug := slug
+				if strings.HasPrefix(slug, "th-") || strings.HasPrefix(slug, "en-") {
+					displaySlug = slug[3:]
+				}
+				post.Title = strings.Title(strings.ReplaceAll(displaySlug, "-", " "))
 			}
 
 			// Parse date from frontmatter or use file modification time
@@ -155,11 +190,23 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 		return posts[i].Date.After(posts[j].Date)
 	})
 
+	// Translated content based on language
+	var welcomeTitle, welcomeText, postsHeading string
+	if lang == "th" {
+		welcomeTitle = "ยินดีต้อนรับสู่บล็อกของฉัน"
+		welcomeText = "สวัสดี! ฉันเป็นนักพัฒนาที่ชอบสร้างสิ่งต่างๆ ด้วย Go นี่คือพื้นที่ส่วนตัวของฉันสำหรับแชร์ความคิด บทเรียน และโปรเจกต์"
+		postsHeading = "บทความ"
+	} else {
+		welcomeTitle = "Welcome to My Blog"
+		welcomeText = "Hi! I'm a developer who loves building things with Go. This is my personal space to share thoughts, tutorials, and projects."
+		postsHeading = "Posts"
+	}
+
 	// Build post list HTML
 	var content bytes.Buffer
-	content.WriteString("<h1>Welcome to My Blog</h1>\n")
-	content.WriteString("<p class=\"about-me\">Hi! I'm a developer who loves building things with Go. This is my personal space to share thoughts, tutorials, and projects.</p>\n")
-	content.WriteString("<h2 class=\"posts-heading\">Posts</h2>\n")
+	content.WriteString("<h1>" + welcomeTitle + "</h1>\n")
+	content.WriteString("<p class=\"about-me\">" + welcomeText + "</p>\n")
+	content.WriteString("<h2 class=\"posts-heading\">" + postsHeading + "</h2>\n")
 	content.WriteString("<ul class=\"post-list\">\n")
 	for _, post := range posts {
 		content.WriteString("<li>")

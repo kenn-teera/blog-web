@@ -46,7 +46,7 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
     line-height: 1.6;
     color: var(--text-color);
     background-color: var(--bg-color);
@@ -69,6 +69,12 @@ nav {
     align-items: center;
 }
 
+.nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
 .logo {
     font-size: 1.5rem;
     font-weight: 700;
@@ -78,6 +84,46 @@ nav {
 
 .logo:hover {
     color: var(--link-color);
+}
+
+/* Language Toggle Button */
+.lang-toggle {
+    background: none;
+    border: 2px solid var(--border-color);
+    border-radius: 20px;
+    padding: 0.35rem 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--muted-color);
+    transition: all 0.3s ease;
+}
+
+.lang-toggle:hover {
+    border-color: var(--link-color);
+    transform: scale(1.05);
+}
+
+.lang-toggle .lang-th,
+.lang-toggle .lang-en {
+    padding: 0.15rem 0.4rem;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+/* Active language indicator */
+[data-lang="th"] .lang-toggle .lang-th {
+    background: var(--link-color);
+    color: #fff;
+}
+
+[data-lang="en"] .lang-toggle .lang-en {
+    background: var(--link-color);
+    color: #fff;
 }
 
 /* Theme Toggle Button */
@@ -350,4 +396,112 @@ footer {
     article blockquote {
         padding-left: 0.75rem;
     }
+}
+
+/* Modal Overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 1rem;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-content {
+    background: var(--bg-color);
+    border-radius: 16px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-content h2 {
+    font-size: 1.5rem;
+    color: var(--heading-color);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.modal-body {
+    color: var(--text-color);
+    line-height: 1.7;
+    margin-bottom: 1.5rem;
+}
+
+.modal-body p {
+    margin-bottom: 0.75rem;
+}
+
+.modal-body hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 1rem 0;
+}
+
+.modal-btn {
+    width: 100%;
+    padding: 0.875rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: #fff;
+    background: linear-gradient(135deg, #0066cc, #004499);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.modal-btn:hover {
+    background: linear-gradient(135deg, #0077dd, #0055aa);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 102, 204, 0.4);
+}
+
+.modal-btn:active {
+    transform: translateY(0);
+}
+
+[data-theme="dark"] .modal-btn {
+    background: linear-gradient(135deg, #66b3ff, #3399ff);
+    color: #1a1a1a;
+}
+
+[data-theme="dark"] .modal-btn:hover {
+    background: linear-gradient(135deg, #77c4ff, #44aaff);
+    box-shadow: 0 4px 12px rgba(102, 179, 255, 0.4);
 }
