@@ -86,6 +86,86 @@ nav {
     color: var(--link-color);
 }
 
+/* Navigation Left Section */
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.nav-link {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--muted-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+    margin-top: 0.5rem;
+}
+
+.nav-link:hover {
+    color: var(--link-color);
+}
+
+/* Contact Page Styles */
+.contact-page {
+    max-width: 100%;
+}
+
+.contact-page h1 {
+    font-size: 2rem;
+    color: var(--heading-color);
+    margin-bottom: 2rem;
+}
+
+.contact-page section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: var(--code-bg);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.contact-page h2 {
+    font-size: 1.35rem;
+    color: var(--heading-color);
+    margin-bottom: 1rem;
+}
+
+.contact-page p {
+    margin-bottom: 0.75rem;
+    color: var(--text-color);
+    line-height: 1.7;
+}
+
+.contact-page ul {
+    list-style: none;
+    padding: 0;
+}
+
+.contact-page li {
+    margin-bottom: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.contact-page li:last-child {
+    border-bottom: none;
+}
+
+.contact-list li {
+    font-size: 1rem;
+}
+
+.contact-list a {
+    color: var(--link-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.contact-list a:hover {
+    text-decoration: underline;
+}
+
 /* Language Toggle Button */
 .lang-toggle {
     background: none;
@@ -355,6 +435,10 @@ footer {
 
     .logo {
         font-size: 1.25rem;
+    }
+
+    .nav-link {
+        margin-top: 0.3rem;
     }
 
     article h1 {

@@ -5,6 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}} | LearnArai</title>
+    <!-- SEO Meta Tags -->
+    <meta name="description"
+        content="LearnArai - A learning blog for education and knowledge sharing in Thai and English">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="Teerapat Yajai">
+    <!-- Open Graph -->
+    <meta property="og:title" content="{{.Title}} | LearnArai">
+    <meta property="og:description" content="LearnArai - A learning blog for education and knowledge sharing">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="th_TH">
+    <meta property="og:locale:alternate" content="en_US">
     <!-- Thai Font Support -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,7 +41,10 @@
 <body>
     <header>
         <nav>
-            <a href="/" class="logo">LearnArai</a>
+            <div class="nav-left">
+                <a href="/" class="logo">LearnArai</a>
+                <a href="/contact" class="nav-link">Contact</a>
+            </div>
             <div class="nav-controls">
                 <button id="lang-toggle" class="lang-toggle" aria-label="Toggle language">
                     <span class="lang-th">TH</span>
@@ -47,7 +61,7 @@
         {{.Content}}
     </main>
     <footer>
-        <p>&copy; 2026 LearnArai. <span data-i18n="footer">สร้างด้วย Go</span></p>
+        <p>&copy; 2026 LearnArai. <span data-i18n="footer"> LearnArai Mai ru</span></p>
     </footer>
 
     <!-- Disclaimer Popup Modal -->
@@ -75,14 +89,14 @@
                 disclaimerLabel: 'ข้อจำกัดความรับผิดชอบ:',
                 disclaimerText: 'เนื้อหาในบล็อกนี้จัดทำขึ้นเพื่อการศึกษาและแบ่งปันความรู้เท่านั้น ผู้เขียนไม่รับประกันความถูกต้องหรือความสมบูรณ์ของข้อมูล การนำไปใช้เป็นความรับผิดชอบของผู้อ่านเอง',
                 acceptBtn: 'เข้าใจแล้ว',
-                footer: 'Built with Go'
+                footer: 'Built with you'
             },
             en: {
                 modalTitle: 'Welcome',
                 disclaimerLabel: 'Disclaimer:',
                 disclaimerText: 'The content on this blog is for educational and knowledge-sharing purposes only. The author does not guarantee the accuracy or completeness of the information. Use at your own discretion.',
-                acceptBtn: 'I Understand',
-                footer: 'Built with Go'
+                acceptBtn: 'Understand',
+                footer: 'Built with you'
             }
         };
 
@@ -135,12 +149,14 @@
                 // Switch to the equivalent post in the other language
                 const postSlug = postMatch[2]; // e.g., "getting-started"
                 const newPath = '/posts/' + newLang + '-' + postSlug;
-                window.location.href = newPath + '?lang=' + newLang;
+                // Use replace to avoid adding to browser history
+                window.location.replace(newPath + '?lang=' + newLang);
             } else {
                 // Stay on current page (homepage or shared posts)
                 const url = new URL(window.location.href);
                 url.searchParams.set('lang', newLang);
-                window.location.href = url.toString();
+                // Use replace to avoid adding to browser history
+                window.location.replace(url.toString());
             }
         });
 
