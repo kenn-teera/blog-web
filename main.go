@@ -72,7 +72,7 @@ func main() {
 	mux.Handle("GET /images/", http.StripPrefix("/images/", http.FileServer(http.Dir("images"))))
 
 	// Homepage - list all posts
-	mux.HandleFunc("GET /", HomeHandler)
+	mux.HandleFunc("GET /{$}", HomeHandler)
 
 	// Contact page
 	mux.HandleFunc("GET /contact", ContactHandler)
@@ -165,6 +165,14 @@ func setSecurityHeaders(w http.ResponseWriter) {
 func toTitleCase(s string) string {
 	caser := cases.Title(language.English)
 	return caser.String(s)
+}
+
+// titleFromSlug builds a display title from a slug, dropping any language prefix
+func titleFromSlug(slug string) string {
+	if strings.HasPrefix(slug, "th-") || strings.HasPrefix(slug, "en-") {
+		slug = slug[3:]
+	}
+	return toTitleCase(strings.ReplaceAll(slug, "-", " "))
 }
 
 // IsValidSlug checks if a slug contains only valid characters
@@ -296,12 +304,7 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 			if fm.Title != "" {
 				post.Title = fm.Title
 			} else {
-				// Remove language prefix for display
-				displaySlug := slug
-				if strings.HasPrefix(slug, "th-") || strings.HasPrefix(slug, "en-") {
-					displaySlug = slug[3:]
-				}
-				post.Title = toTitleCase(strings.ReplaceAll(displaySlug, "-", " "))
+				post.Title = titleFromSlug(slug)
 			}
 
 			// Parse date from frontmatter or use file modification time
@@ -390,7 +393,7 @@ func PostHandler(sl SlugReader) http.HandlerFunc {
 		// Use frontmatter title or generate from slug
 		title := fm.Title
 		if title == "" {
-			title = toTitleCase(strings.ReplaceAll(slug, "-", " "))
+			title = titleFromSlug(slug)
 		}
 
 		// Build post HTML with date
