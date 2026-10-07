@@ -482,7 +482,7 @@ footer {
     }
 }
 
-/* Modal Overlay */
+/* Modal Overlay (hidden until app.js adds .open) */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -492,12 +492,16 @@ footer {
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-    display: flex;
+    display: none;
     justify-content: center;
     align-items: center;
     z-index: 1000;
     padding: 1rem;
     animation: fadeIn 0.3s ease;
+}
+
+.modal-overlay.open {
+    display: flex;
 }
 
 @keyframes fadeIn {

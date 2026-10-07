@@ -184,32 +184,46 @@ func TestPostHandler_NotFound(t *testing.T) {
 }
 
 func TestHomeHandler_SecurityHeaders(t *testing.T) {
-	// Create a temporary posts directory for testing
-	tmpDir := t.TempDir()
-	postsDir := filepath.Join(tmpDir, "posts")
-	os.MkdirAll(postsDir, 0755)
+	// Run against a temporary posts directory; the template was already
+	// parsed from the repo in init(), so only posts/ is needed here.
+	t.Chdir(t.TempDir())
+	if err := os.Mkdir("posts", 0755); err != nil {
+		t.Fatal(err)
+	}
+	posts := map[string]string{
+		"en-hello.md":  "---\ntitle: English Post\ndate: 2026-01-02\n---\nHi",
+		"th-hello.md":  "---\ntitle: Thai Post\ndate: 2026-01-02\n---\nHi",
+		"shared-up.md": "---\ntitle: Shared Post\ndate: 2026-01-01\n---\nHi",
+	}
+	for name, content := range posts {
+		if err := os.WriteFile(filepath.Join("posts", name), []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
 
-	// Save original working directory and change to temp
-	origDir, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	defer os.Chdir(origDir)
-
-	// Create templates directory
-	os.MkdirAll("templates", 0755)
-	os.WriteFile("templates/base.html", []byte(`<!DOCTYPE html><html><head><title>{{.Title}}</title></head><body>{{.Content}}</body></html>`), 0644)
-
-	// Re-initialize template for test
-	testTmpl, _ := tmpl.ParseFiles("templates/base.html")
-	_ = testTmpl
-
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequest("GET", "/?lang=en", nil)
 	w := httptest.NewRecorder()
 
 	HomeHandler(w, req)
 
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+
 	// Check security headers are set
-	if w.Header().Get("X-XSS-Protection") != "1; mode=block" {
-		t.Error("missing X-XSS-Protection header")
+	if w.Header().Get("Content-Security-Policy") != contentSecurityPolicy {
+		t.Error("missing Content-Security-Policy header")
+	}
+
+	// Only English and unprefixed posts should be listed
+	body := w.Body.String()
+	for _, want := range []string{"English Post", "Shared Post"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("expected body to contain %q", want)
+		}
+	}
+	if strings.Contains(body, "Thai Post") {
+		t.Error("expected Thai post to be filtered out for lang=en")
 	}
 }
 
@@ -247,5 +261,65 @@ func TestTitleFromSlug(t *testing.T) {
 		if got := titleFromSlug(slug); got != want {
 			t.Errorf("titleFromSlug(%q) = %q, want %q", slug, got, want)
 		}
+	}
+}
+
+func TestGetLang(t *testing.T) {
+	tests := []struct {
+		name   string
+		query  string
+		cookie string
+		want   string
+	}{
+		{"default", "", "", "th"},
+		{"query", "?lang=en", "", "en"},
+		{"cookie", "", "en", "en"},
+		{"query beats cookie", "?lang=th", "en", "th"},
+		{"invalid falls back", "?lang=fr", "", "th"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/"+tt.query, nil)
+			if tt.cookie != "" {
+				req.AddCookie(&http.Cookie{Name: "lang", Value: tt.cookie})
+			}
+			if got := getLang(req); got != tt.want {
+				t.Errorf("getLang() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPostHandler_PageLanguage(t *testing.T) {
+	mockReader := &MockSlugReader{content: map[string]string{
+		"en-hello": "Hello",
+		"th-hello": "Hello",
+		"shared":   "Hello",
+	}}
+	handler := PostHandler(mockReader)
+
+	tests := []struct {
+		slug, query, want string
+	}{
+		{"en-hello", "", "en"},
+		{"th-hello", "?lang=en", "th"},
+		{"shared", "?lang=en", "en"},
+		{"shared", "", "th"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.slug+tt.query, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/posts/"+tt.slug+tt.query, nil)
+			req.SetPathValue("slug", tt.slug)
+			w := httptest.NewRecorder()
+
+			handler(w, req)
+
+			if !strings.Contains(w.Body.String(), `<html lang="`+tt.want+`"`) {
+				t.Errorf("expected <html lang=%q>", tt.want)
+			}
+			if c := w.Result().Cookies(); len(c) != 1 || c[0].Value != tt.want {
+				t.Errorf("expected lang cookie %q, got %v", tt.want, c)
+			}
+		})
 	}
 }

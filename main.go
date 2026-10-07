@@ -39,11 +39,23 @@ type PostFrontmatter struct {
 // PageData holds data for HTML templates
 type PageData struct {
 	Title   string
+	Lang    string
 	Content template.HTML
 }
 
-// Cached template for performance
-var tmpl *template.Template
+// Cached templates for performance
+var (
+	tmpl        *template.Template
+	contactTmpl *template.Template
+)
+
+// contentSecurityPolicy only allows scripts and styles from this site, plus
+// Google Fonts for the Sarabun font
+const contentSecurityPolicy = "default-src 'self'; " +
+	"style-src 'self' https://fonts.googleapis.com; " +
+	"font-src https://fonts.gstatic.com; " +
+	"img-src 'self' data:; " +
+	"frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 
 // Slug validation regex - only allow alphanumeric, hyphens, and underscores
 var validSlugRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
@@ -51,6 +63,10 @@ var validSlugRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 func init() {
 	var err error
 	tmpl, err = template.ParseFiles("templates/base.html")
+	if err != nil {
+		log.Fatalf("Failed to parse template: %v", err)
+	}
+	contactTmpl, err = template.ParseFiles("templates/contact.html")
 	if err != nil {
 		log.Fatalf("Failed to parse template: %v", err)
 	}
@@ -157,7 +173,7 @@ func ParseFrontmatter(content string) (PostFrontmatter, string) {
 func setSecurityHeaders(w http.ResponseWriter) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Frame-Options", "DENY")
-	w.Header().Set("X-XSS-Protection", "1; mode=block")
+	w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
 	w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 }
 
@@ -175,6 +191,33 @@ func titleFromSlug(slug string) string {
 	return toTitleCase(strings.ReplaceAll(slug, "-", " "))
 }
 
+// getLang returns the requested language from the query param or cookie,
+// defaulting to "th"
+func getLang(r *http.Request) string {
+	lang := r.URL.Query().Get("lang")
+	if lang == "" {
+		if cookie, err := r.Cookie("lang"); err == nil {
+			lang = cookie.Value
+		}
+	}
+	if lang != "en" && lang != "th" {
+		lang = "th"
+	}
+	return lang
+}
+
+// setLangCookie remembers the language of the page being shown
+func setLangCookie(w http.ResponseWriter, lang string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "lang",
+		Value:    lang,
+		Path:     "/",
+		MaxAge:   31536000, // 1 year
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
 // IsValidSlug checks if a slug contains only valid characters
 func IsValidSlug(slug string) bool {
 	return validSlugRegex.MatchString(slug)
@@ -184,86 +227,25 @@ func IsValidSlug(slug string) bool {
 func ContactHandler(w http.ResponseWriter, r *http.Request) {
 	setSecurityHeaders(w)
 
-	// Get language from query param or cookie, default to "th"
-	lang := r.URL.Query().Get("lang")
-	if lang == "" {
-		if cookie, err := r.Cookie("lang"); err == nil {
-			lang = cookie.Value
-		}
-	}
-	if lang != "en" && lang != "th" {
-		lang = "th"
-	}
+	lang := getLang(r)
+	setLangCookie(w, lang)
 
 	var content bytes.Buffer
-
-	if lang == "th" {
-		content.WriteString(`<div class="contact-page">
-	<h1>Contact &amp; About Me</h1>
-	
-	<section class="about-section">
-		<h2>About Me</h2>
-		<p>ธีรภัทร ยาใจ</p>
-		<p>website นี้จัดทำขึ้นเพื่อการศึกษาและแบ่งปันความรู้เท่านั้น หากมีข้อผิดพลาดหรือต้องการให้เพิ่มเติมอะไร สามารถติดต่อตามที่ติดต่อข้างล่างได้เลย ขอบคุณที่เข้ามาอ่านกันนะครับ 🥰</p>
-	</section>
-
-	<section class="contact-section">
-		<h2>Contact Me</h2>
-		<ul class="contact-list">
-			<li>Email: <a href="mailto:teerapat.yj@gmail.com">teerapat.yj@gmail.com</a></li>
-			<li>GitHub: <a href="https://github.com/kenn-teera" target="_blank" rel="noopener noreferrer">github.com/kenn-teera</a></li>
-			<li>LinkedIn: <a href="https://linkedin.com/in/teerapat-yajai/" target="_blank" rel="noopener noreferrer">linkedin.com/in/teerapat-yajai</a></li>
-		</ul>
-	</section>
-</div>`)
-	} else {
-		content.WriteString(`<div class="contact-page">
-	<h1>Contact &amp; About Me</h1>
-	
-	<section class="about-section">
-		<h2>About Me</h2>
-		<p>Teerapat Yajai</p>
-		<p>This website is built for learning and sharing knowledge. If there are any errors or you want to add more, you can contact me through the contact information below. Thank you for reading! 🥰</p>
-	</section>
-
-	<section class="contact-section">
-		<h2>Contact Me</h2>
-		<ul class="contact-list">
-			<li>Email: <a href="mailto:teerapat.yj@gmail.com">teerapat.yj@gmail.com</a></li>
-			<li>GitHub: <a href="https://github.com/kenn-teera" target="_blank" rel="noopener noreferrer">github.com/kenn-teera</a></li>
-			<li>LinkedIn: <a href="https://linkedin.com/in/teerapat-yajai" target="_blank" rel="noopener noreferrer">linkedin.com/in/teerapat-yajai</a></li>
-		</ul>
-	</section>
-</div>`)
+	if err := contactTmpl.Execute(&content, lang); err != nil {
+		log.Printf("Error rendering contact page: %v", err)
+		http.Error(w, "Error rendering page", http.StatusInternalServerError)
+		return
 	}
 
-	renderPage(w, "Contact", template.HTML(content.String()))
+	renderPage(w, lang, "Contact", template.HTML(content.String()))
 }
 
 // HomeHandler lists all blog posts
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	setSecurityHeaders(w)
 
-	// Get language from query param or cookie, default to "th"
-	lang := r.URL.Query().Get("lang")
-	if lang == "" {
-		if cookie, err := r.Cookie("lang"); err == nil {
-			lang = cookie.Value
-		}
-	}
-	if lang != "en" && lang != "th" {
-		lang = "th"
-	}
-
-	// Set language cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "lang",
-		Value:    lang,
-		Path:     "/",
-		MaxAge:   31536000, // 1 year
-		HttpOnly: false,
-		SameSite: http.SameSiteLaxMode,
-	})
+	lang := getLang(r)
+	setLangCookie(w, lang)
 
 	files, err := os.ReadDir("posts")
 	if err != nil {
@@ -334,11 +316,11 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	// Translated content based on language
 	var welcomeTitle, welcomeText, postsHeading string
 	if lang == "th" {
-		welcomeTitle = "ยินดีต้อนรับสู่ LearnArai"
+		welcomeTitle = "ยินดีต้อนรับสู่ K-Blog"
 		welcomeText = "สวัสดีครับ!! ผมคือคนที่ชอบสร้างสรรค์และเรียนรู้สิ่งต่างๆ นี่คือพื้นที่ส่วนตัวของผมซึ่งเอาไว้สำหรับแชร์ความคิด สิ่งที่ได้เรียนรู้ หรือโปรเจกต์ที่กำลังทำอยู่"
 		postsHeading = "บทความ"
 	} else {
-		welcomeTitle = "Welcome to LearnArai"
+		welcomeTitle = "Welcome to K-Blog"
 		welcomeText = "Hi!! I'm someone who likes to create and learn new things. This is my personal space where I can share ideas or projects I'm currently working on."
 		postsHeading = "Posts"
 	}
@@ -357,7 +339,7 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	content.WriteString("</ul>\n")
 
-	renderPage(w, "Home", template.HTML(content.String()))
+	renderPage(w, lang, "Home", template.HTML(content.String()))
 }
 
 // PostHandler handles individual blog posts
@@ -371,6 +353,13 @@ func PostHandler(sl SlugReader) http.HandlerFunc {
 		if !IsValidSlug(slug) {
 			http.Error(w, "Invalid post slug", http.StatusBadRequest)
 			return
+		}
+
+		// A th-/en- prefix fixes the post's language; other posts follow
+		// the reader's choice
+		lang := getLang(r)
+		if strings.HasPrefix(slug, "th-") || strings.HasPrefix(slug, "en-") {
+			lang = slug[:2]
 		}
 
 		postMarkdown, err := sl.Read(slug)
@@ -410,14 +399,16 @@ func PostHandler(sl SlugReader) http.HandlerFunc {
 		postHTML.WriteString(buf.String())
 		postHTML.WriteString("</article>")
 
-		renderPage(w, title, template.HTML(postHTML.String()))
+		setLangCookie(w, lang)
+		renderPage(w, lang, title, template.HTML(postHTML.String()))
 	}
 }
 
 // renderPage renders the base template with content
-func renderPage(w http.ResponseWriter, title string, content template.HTML) {
+func renderPage(w http.ResponseWriter, lang, title string, content template.HTML) {
 	data := PageData{
 		Title:   title,
+		Lang:    lang,
 		Content: content,
 	}
 
