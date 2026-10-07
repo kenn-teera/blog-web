@@ -211,8 +211,8 @@ func TestHomeHandler_SecurityHeaders(t *testing.T) {
 	}
 
 	// Check security headers are set
-	if w.Header().Get("X-XSS-Protection") != "1; mode=block" {
-		t.Error("missing X-XSS-Protection header")
+	if w.Header().Get("Content-Security-Policy") != contentSecurityPolicy {
+		t.Error("missing Content-Security-Policy header")
 	}
 
 	// Only English and unprefixed posts should be listed
@@ -261,5 +261,65 @@ func TestTitleFromSlug(t *testing.T) {
 		if got := titleFromSlug(slug); got != want {
 			t.Errorf("titleFromSlug(%q) = %q, want %q", slug, got, want)
 		}
+	}
+}
+
+func TestGetLang(t *testing.T) {
+	tests := []struct {
+		name   string
+		query  string
+		cookie string
+		want   string
+	}{
+		{"default", "", "", "th"},
+		{"query", "?lang=en", "", "en"},
+		{"cookie", "", "en", "en"},
+		{"query beats cookie", "?lang=th", "en", "th"},
+		{"invalid falls back", "?lang=fr", "", "th"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/"+tt.query, nil)
+			if tt.cookie != "" {
+				req.AddCookie(&http.Cookie{Name: "lang", Value: tt.cookie})
+			}
+			if got := getLang(req); got != tt.want {
+				t.Errorf("getLang() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPostHandler_PageLanguage(t *testing.T) {
+	mockReader := &MockSlugReader{content: map[string]string{
+		"en-hello": "Hello",
+		"th-hello": "Hello",
+		"shared":   "Hello",
+	}}
+	handler := PostHandler(mockReader)
+
+	tests := []struct {
+		slug, query, want string
+	}{
+		{"en-hello", "", "en"},
+		{"th-hello", "?lang=en", "th"},
+		{"shared", "?lang=en", "en"},
+		{"shared", "", "th"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.slug+tt.query, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/posts/"+tt.slug+tt.query, nil)
+			req.SetPathValue("slug", tt.slug)
+			w := httptest.NewRecorder()
+
+			handler(w, req)
+
+			if !strings.Contains(w.Body.String(), `<html lang="`+tt.want+`"`) {
+				t.Errorf("expected <html lang=%q>", tt.want)
+			}
+			if c := w.Result().Cookies(); len(c) != 1 || c[0].Value != tt.want {
+				t.Errorf("expected lang cookie %q, got %v", tt.want, c)
+			}
+		})
 	}
 }

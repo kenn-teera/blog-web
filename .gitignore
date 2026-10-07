@@ -24,8 +24,5 @@ go.work.sum
 # env file
 .env
 
-# Example: exclude large images
-images/*.jpg
-images/*.JPG
 # Compiled binary
 blog-web
