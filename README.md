@@ -1,4 +1,4 @@
-# LearnArai Blog
+# K-Blog
 
 A minimal, fast, and beautiful blog built with Go.
 
