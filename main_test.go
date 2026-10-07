@@ -184,32 +184,46 @@ func TestPostHandler_NotFound(t *testing.T) {
 }
 
 func TestHomeHandler_SecurityHeaders(t *testing.T) {
-	// Create a temporary posts directory for testing
-	tmpDir := t.TempDir()
-	postsDir := filepath.Join(tmpDir, "posts")
-	os.MkdirAll(postsDir, 0755)
+	// Run against a temporary posts directory; the template was already
+	// parsed from the repo in init(), so only posts/ is needed here.
+	t.Chdir(t.TempDir())
+	if err := os.Mkdir("posts", 0755); err != nil {
+		t.Fatal(err)
+	}
+	posts := map[string]string{
+		"en-hello.md":  "---\ntitle: English Post\ndate: 2026-01-02\n---\nHi",
+		"th-hello.md":  "---\ntitle: Thai Post\ndate: 2026-01-02\n---\nHi",
+		"shared-up.md": "---\ntitle: Shared Post\ndate: 2026-01-01\n---\nHi",
+	}
+	for name, content := range posts {
+		if err := os.WriteFile(filepath.Join("posts", name), []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
 
-	// Save original working directory and change to temp
-	origDir, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	defer os.Chdir(origDir)
-
-	// Create templates directory
-	os.MkdirAll("templates", 0755)
-	os.WriteFile("templates/base.html", []byte(`<!DOCTYPE html><html><head><title>{{.Title}}</title></head><body>{{.Content}}</body></html>`), 0644)
-
-	// Re-initialize template for test
-	testTmpl, _ := tmpl.ParseFiles("templates/base.html")
-	_ = testTmpl
-
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequest("GET", "/?lang=en", nil)
 	w := httptest.NewRecorder()
 
 	HomeHandler(w, req)
 
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+
 	// Check security headers are set
 	if w.Header().Get("X-XSS-Protection") != "1; mode=block" {
 		t.Error("missing X-XSS-Protection header")
+	}
+
+	// Only English and unprefixed posts should be listed
+	body := w.Body.String()
+	for _, want := range []string{"English Post", "Shared Post"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("expected body to contain %q", want)
+		}
+	}
+	if strings.Contains(body, "Thai Post") {
+		t.Error("expected Thai post to be filtered out for lang=en")
 	}
 }
 
