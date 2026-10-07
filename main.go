@@ -334,11 +334,11 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	// Translated content based on language
 	var welcomeTitle, welcomeText, postsHeading string
 	if lang == "th" {
-		welcomeTitle = "ยินดีต้อนรับสู่ LearnArai"
+		welcomeTitle = "ยินดีต้อนรับสู่ K-Blog"
 		welcomeText = "สวัสดีครับ!! ผมคือคนที่ชอบสร้างสรรค์และเรียนรู้สิ่งต่างๆ นี่คือพื้นที่ส่วนตัวของผมซึ่งเอาไว้สำหรับแชร์ความคิด สิ่งที่ได้เรียนรู้ หรือโปรเจกต์ที่กำลังทำอยู่"
 		postsHeading = "บทความ"
 	} else {
-		welcomeTitle = "Welcome to LearnArai"
+		welcomeTitle = "Welcome to K-Blog"
 		welcomeText = "Hi!! I'm someone who likes to create and learn new things. This is my personal space where I can share ideas or projects I'm currently working on."
 		postsHeading = "Posts"
 	}
