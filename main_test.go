@@ -236,3 +236,16 @@ func TestContactHandler_LanguageSwitch(t *testing.T) {
 		})
 	}
 }
+
+func TestTitleFromSlug(t *testing.T) {
+	tests := map[string]string{
+		"th-getting-started": "Getting Started",
+		"en-my-post":         "My Post",
+		"shared-post":        "Shared Post",
+	}
+	for slug, want := range tests {
+		if got := titleFromSlug(slug); got != want {
+			t.Errorf("titleFromSlug(%q) = %q, want %q", slug, got, want)
+		}
+	}
+}

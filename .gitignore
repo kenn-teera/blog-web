@@ -27,3 +27,5 @@ go.work.sum
 # Example: exclude large images
 images/*.jpg
 images/*.JPG
+# Compiled binary
+blog-web
